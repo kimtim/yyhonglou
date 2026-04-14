@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>《红楼梦》人物关系图谱</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: "Microsoft YaHei", "SimSun", sans-serif;
+      background: #fafafa;
+      color: #333;
+      overflow: hidden;
+    }
+    .controls {
+      padding: 12px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+    }
+    .controls label {
+      font-weight: bold;
+      color: #c00;
+    }
+    .controls select {
+      padding: 6px 12px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      min-width: 120px;
+    }
+    #loading {
+      color: #999;
+      font-style: italic;
+    }
+    .main-title {
+      text-align: center;
+      padding: 10px;
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      font-size: 16px;
+      color: #c00;
+    }
+    #graph {
+      width: 100%;
+      height: calc(100vh - 100px);
+    }
+    .node { stroke: #fff; stroke-width: 1.5px; cursor: pointer; }
+    .link { stroke: #999; stroke-opacity: 0.4; }
+    .tooltip {
+      position: absolute;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.85);
+      color: #fff;
+      border-radius: 5px;
+      font-size: 12px;
+      line-height: 1.3;
+      pointer-events: none;
+      opacity: 0;
+      max-width: 200px;
+      z-index: 1000;
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 2000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.6);
+    }
+    .modal-content {
+      background: #fff;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 700px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close:hover { color: #000; }
+    .modal h2 { color: #c00; margin-top: 0; }
+    .modal h3 {
+      margin-top: 16px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .modal ul { padding-left: 20px; }
+    .modal li { margin-bottom: 4px; }
+
+    /* 高亮样式 */
+    .link.highlight {
+      stroke: #e74c3c;
+      stroke-width: 2;
+      stroke-opacity: 0.9;
+    }
+    .node.highlight {
+      stroke: #c00;
+      stroke-width: 2;
+      r: 16;
+    }
+    .label.highlight {
+      font-weight: bold;
+      fill: #c00;
+    }
+  </style>
+</head>
+<body>
+  <div class="main-title" id="chapter-title">请选择章节目录</div>
+  <div id="graph"></div>
+  <div id="tooltip" class="tooltip"></div>
+
+  <!-- 人物详情模态框 -->
+  <div id="personModal" class="modal">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h2 id="modal-name"></h2>
+      <p id="modal-brief"></p>
+      <h3>详细介绍</h3>
+      <p id="modal-detail"></p>
+      <h3>出场回目概要</h3>
+      <ul id="modal-appearances"></ul>
+    </div>
+  </div>
+  <div class="controls">
+    <label for="chapter-select">选择章节：</label>
+    <select id="chapter-select">
+      <option value="">请选择</option>
+    </select>
+    <span id="loading">等待加载中…</span>
+  </div>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    // === 配置 ===
+    const MAX_CHAPTER = 80;
+    const CHARACTERS_FILE = 'data/characters.json';
+    const CHAPTER_DIR = 'data/';
+
+    // === 全局状态 ===
+    let allCharacters = null;
+    let currentSimulation = null;
+
+    // === 初始化：加载人物库 + 填充下拉框 ===
+    Promise.all([
+      d3.json(CHARACTERS_FILE),
+      initChapterSelect()
+    ]).then(([chars]) => {
+      allCharacters = chars;
+    }).catch(err => {
+      console.error("初始化失败:", err);
+      alert("无法加载基础人物数据，请确保 data/characters.json 存在");
+    });
+
+    function initChapterSelect() {
+      const select = d3.select("#chapter-select");
+      for (let i = 1; i <= MAX_CHAPTER; i++) {
+        select.append("option")
+          .attr("value", i)
+          .text(`第${i}回`);
+      }
+      select.on("change", handleChapterChange);
+      return Promise.resolve();
+    }
+
+    async function handleChapterChange() {
+      const chapterNum = this.value;
+      if (!chapterNum) {
+        clearGraph();
+        d3.select("#chapter-title").text("请选择章节目录");
+        return;
+      }
+
+      d3.select("#loading").style("display", "inline");
+      try {
+        const chapterData = await d3.json(`data/chapter${chapterNum}.json`);
+        renderGraph(chapterData);
+        d3.select("#chapter-title").text(chapterData.title || `第${chapterNum}回`);
+      } catch (err) {
+        console.error(`加载第${chapterNum}回失败:`, err);
+        alert(`暂无第${chapterNum}回数据，或文件不存在。`);
+        clearGraph();
+        d3.select("#chapter-title").text(`第${chapterNum}回（数据未就绪）`);
+      } finally {
+        d3.select("#loading").style("display", "none");
+      }
+    }
+
+    function clearGraph() {
+      d3.select("#graph svg").remove();
+      if (currentSimulation) {
+        currentSimulation.stop();
+        currentSimulation = null;
+      }
+    }
+
+    function renderGraph(chapter) {
+      clearGraph();
+
+      const width = window.innerWidth;
+      const height = window.innerHeight - 100;
+
+      const svg = d3.select("#graph")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height)
+        .call(d3.zoom().on("zoom", (event) => {
+          container.attr("transform", event.transform);
+        }))
+        .append("g");
+
+      const container = svg.append("g");
+
+      // 构建节点（从全局库取）
+      const nodes = chapter.nodes.map(id => {
+        const info = allCharacters[id];
+        if (!info) {
+          console.warn(`警告：人物 "${id}" 未在 characters.json 中定义`);
+          return {
+            id,
+            brief: "（未知人物）",
+            detail: "",
+            appearances: {},
+            group: "未知"
+          };
+        }
+        return {
+          id,
+          ...info,
+          group: getGroup(id)
+        };
+      });
+
+      const links = chapter.links || [];
+
+      const color = d3.scaleOrdinal()
+        .domain(["主子", "奴才", "宗教人士", "神话人物", "未知"])
+        .range(["#e74c3c", "#3498db", "#2ecc71", "#f39c12", "#95a5a6"]);
+
+      // === 辅助函数 ===
+      function getGroup(id) {
+        const myth = ["女娲", "警幻仙子"];
+        const religious = ["茫茫大士", "渺渺真人"];
+        const masters = [
+          "贾母", "贾政", "王夫人", "贾赦", "邢夫人", "贾珍", "尤氏",
+          "贾琏", "王熙凤", "贾宝玉", "林黛玉", "薛宝钗", "贾元春",
+          "贾探春", "贾惜春", "甄士隐", "贾雨村", "冷子兴", "林如海"
+        ];
+        if (myth.includes(id)) return "神话人物";
+        if (religious.includes(id)) return "宗教人士";
+        if (masters.includes(id)) return "主子";
+        return "奴才";
+      }
+	  
+      // 力导向模拟
+      const simulation = d3.forceSimulation(nodes)
+        .force("link", d3.forceLink(links).id(d => d.id).distance(120))
+        .force("charge", d3.forceManyBody().strength(-400))
+        .force("center", d3.forceCenter(width / 2, height / 2))
+        .force("collision", d3.forceCollide().radius(35))
+        .alphaDecay(0.02);
+
+      currentSimulation = simulation;
+
+      // 绘制连线
+      const link = container.append("g")
+        .selectAll("line")
+        .data(links)
+        .enter().append("line")
+        .attr("class", "link");
+
+      // 绘制节点
+      const node = container.append("g")
+        .selectAll("circle")
+        .data(nodes)
+        .enter().append("circle")
+        .attr("class", "node")
+        .attr("r", 14)
+        .attr("fill", d => color(d.group));
+
+      // 绘制标签
+      const label = container.append("g")
+        .selectAll("text")
+        .data(nodes)
+        .enter().append("text")
+        .attr("class", "label")
+        .text(d => d.id)
+        .attr("dx", 16)
+        .attr("dy", 5)
+        .attr("font-size", "12px");
+
+      // 拖拽交互
+      node.call(d3.drag()
+        .on("start", dragstarted)
+        .on("drag", dragged)
+        .on("end", dragended));
+
+      // 悬停 & 点击
+      const tooltip = d3.select("#tooltip");
+
+      node.on("mouseenter", function(event, d) {
+        const related = links.filter(l =>
+          l.source === d.id || l.target === d.id
+        );
+        let tip = `${d.brief}`;
+        if (related.length) {
+          tip += "<hr/>本章关联：";
+          related.forEach(l => {
+            const other = l.source === d.id ? l.target : l.source;
+            tip += `<br/>• ${other}：${l.relation}`;
+          });
+        }
+        tooltip
+          .style("opacity", 1)
+          .html(tip)
+          .style("left", event.pageX + 10 + "px")
+          .style("top", event.pageY - 10 + "px");
+
+        highlightNeighbors(d.id, links, link, node, label);
+      })
+      .on("mouseleave", () => {
+        tooltip.style("opacity", 0);
+        clearHighlight(link, node, label);
+      })
+      .on("click", function(event, d) {
+        const info = allCharacters[d.id] || d;
+        d3.select("#modal-name").text(d.id);
+        d3.select("#modal-brief").text(info.brief || "");
+        d3.select("#modal-detail").text(info.detail || "暂无详情");
+        const ul = d3.select("#modal-appearances");
+        ul.html("");
+        if (info.appearances) {
+          Object.keys(info.appearances)
+            .sort((a, b) => parseInt(a) - parseInt(b))
+            .forEach(ch => {
+              ul.append("li").text(`第${ch}回：${info.appearances[ch]}`);
+            });
+        }
+        d3.select("#personModal").style("display", "block");
+      });
+
+      // 力导向 tick
+      simulation.on("tick", () => {
+        link
+          .attr("x1", d => d.source.x)
+          .attr("y1", d => d.source.y)
+          .attr("x2", d => d.target.x)
+          .attr("y2", d => d.target.y);
+        node
+          .attr("cx", d => d.x)
+          .attr("cy", d => d.y);
+        label
+          .attr("x", d => d.x)
+          .attr("y", d => d.y);
+      });
+
+
+
+      function highlightNeighbors(nodeId, links, linkSel, nodeSel, labelSel) {
+        linkSel.classed("highlight", d =>
+          d.source.id === nodeId || d.target.id === nodeId
+        );
+        nodeSel.classed("highlight", d =>
+          d.id === nodeId ||
+          links.some(l =>
+            (l.source === nodeId && l.target === d.id) ||
+            (l.target === nodeId && l.source === d.id)
+          )
+        );
+        labelSel.classed("highlight", d =>
+          d.id === nodeId ||
+          links.some(l =>
+            (l.source === nodeId && l.target === d.id) ||
+            (l.target === nodeId && l.source === d.id)
+          )
+        );
+      }
+
+      function clearHighlight(linkSel, nodeSel, labelSel) {
+        linkSel.classed("highlight", false);
+        nodeSel.classed("highlight", false);
+        labelSel.classed("highlight", false);
+      }
+
+      function dragstarted(event) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        event.subject.fx = event.subject.x;
+        event.subject.fy = event.subject.y;
+      }
+      function dragged(event) {
+        event.subject.fx = event.x;
+        event.subject.fy = event.y;
+      }
+      function dragended(event) {
+        if (!event.active) simulation.alphaTarget(0);
+        event.subject.fx = null;
+        event.subject.fy = null;
+      }
+    }
+
+    // 模态框关闭
+    d3.select(".close").on("click", () => {
+      d3.select("#personModal").style("display", "none");
+    });
+    d3.select("#personModal").on("click", function(event) {
+      if (event.target === this) {
+        d3.select(this).style("display", "none");
+      }
+    });
+  </script>
+</body>
+</html>

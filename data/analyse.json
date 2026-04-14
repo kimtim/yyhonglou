@@ -1,0 +1,50 @@
+{
+    "title": "第八十回：懦弱迎春肠回九曲 姣怯香菱病入膏肓",
+    "core_sources":
+    [
+        "甄英莲",
+        "贾迎春"
+    ],
+    "nodes":
+    [
+        "薛姨妈"
+    ],
+    "conclusion": "<p></p>",
+    "summary":
+    [
+        {
+            "renwu": "",
+            "gaishu": "",
+            "pinglun": ""
+        }
+    ],
+    "links":
+    [
+        {
+            "source": "",
+            "target": "",
+            "relation": "<cite  class='quote'></cite>"
+        }
+    ],
+    "time_line":
+    [
+        {
+            "text": "<cite class='quote'>他二十来岁人，尚未娶亲……诸如此症，不上一年，都添全了……倏忽又腊尽春回，这病更又沉重……谁知这年冬底，林如海的书信寄来</cite>",
+            "age":
+            {
+                "香菱": 14,
+                "黛玉": 10,
+                "宝玉": 11,
+                "宝钗": 14,
+                "贾瑞": 20
+            }
+        }
+    ],
+    "clue":
+    [
+        {
+            "name": "",
+            "destiny": "<cite  class='quote'></cite>"
+        }
+    ]
+}

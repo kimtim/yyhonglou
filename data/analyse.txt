@@ -1,0 +1,39 @@
+"title": "第八十回：懦弱迎春肠回九曲 姣怯香菱病入膏肓",
+
+"conclusion":"", 
+
+"core_sources": ["甄英莲", "贾迎春"],
+
+"nodes" : [
+"薛姨妈 薛宝钗 薛蟠 甄英莲 夏金桂 宝蟾"
+]
+
+"summary" : [
+{
+"renwu":"",
+"gaishu":"",
+"pinglun":""
+},
+],
+
+"links": [
+{
+"source": "",
+"target": "",
+"relation": ""
+},
+],
+
+"time_line" : [
+"text": "",
+"": 10,
+"": 10
+},
+],
+
+"clue":[
+{
+"name": "",
+"destiny": ""
+},
+]
