@@ -74,7 +74,7 @@
 		  max-height: 600px; /* 自定义最大高度，超出后滚动 */
 		  overflow-y: auto;  /* 垂直方向自动滚动条 */
 		  overflow-x: hidden;/* 隐藏水平滚动条（可选） */
-		  max-width: 400px;
+		  max-width: 600px;
 		  z-index: 1000;
 		  /* 👇 滚动条美化（可选，适配Chrome/Edge） */
 		  scrollbar-width: thin;
@@ -179,9 +179,12 @@
 	  line-height: 1.5;
 	}	
 	#story-brief .renwu { /* 章节介绍的评论部分 */
-	  color: #aaa; 
-	  font-family: "Microsoft YaHei", "STKaiti", "SimKai", serif;
 	  display: block;
+	}	
+
+	.renwu { /* 章节介绍的评论部分 */
+	  color: #a55; 
+	  font-family: "Microsoft YaHei", "STKaiti", "SimKai", serif;
 	  font-size: 12px;
 	  line-height: 1.5;
 	}	
@@ -204,7 +207,7 @@
 	  line-height: 1.4;
 	}
 	.clue .clue-name{
-	  color: #a99; /* 暗黑名字，可怕预言 */
+	  color: #a55; /* 暗黑名字，可怕预言 */
 	  margin: 1px 0;
 	  font-weight: 500;
 	  font-size: 1.1em;
@@ -302,7 +305,7 @@
 		const ageStr = ageParts.join("，");
 
 		// 返回带样式的完整 HTML 行
-		return `${item.text}<ul> -- ${ageStr} -- </ul>`;
+		return `${item.text}<ul> —— ${ageStr}</ul>`;
 		<!-- return "<cite class='quote'>" + item.text + "</cite><ul> 》" + ageStr + "</ul>"; -->
 		}).join("");
 	}
@@ -502,13 +505,11 @@
 				l => l.source.id === d.id || l.target.id === d.id
 			  );
 			  let tip = `<h3>${d.id}</h3>`
-			  		<!-- let tip = "<h3>" + d.id + "</h3>" -->
 			  if (relatedLinks.length > 0) {
 			  tip += relatedLinks.map(l => {
 			  const other = l.source.id === d.id ? l.target.id : l.source.id;
-			  const cite = extractCiteContent(l.relation);
-			  return `<li>${other} | <cite class='quote'>${cite}</cite></li>`;
-			  		<!-- return "<li>" + "<span class='name'>" + other + "</span>" + "" + " : " + l.relation + "</li>"; -->
+			  const cite = l.relation;
+			  return `<li><span class='renwu'>【${other}】</span> ${cite}</li>`;
 			  }).join("");
 			  } else {
 			  tip = `-${d.id}- 无行动`;
