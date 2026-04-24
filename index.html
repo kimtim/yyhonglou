@@ -263,7 +263,7 @@
     <div class="modal-content">
       <span class="close close-story">&times;</span>
       <h2 id="story-title">本回故事主线</h2>
-		  <h3>故事脉络与点评</h3>	
+		  <h3>故事脉络</h3>	
 		  <ul id="story-brief"></ul>
 	    <h3>故事时间轴线（参照甄英莲）</h3>	  
 	    <ul id="story-list"></ul>
@@ -324,8 +324,9 @@
 
 	  return summary.map(item => {
 		// 返回带样式的完整 HTML 行
-		return `<p>${item.gaishu}</p><ul class="renwu">出场人物： ${item.renwu}</ul><ul class="pinglun">${item.pinglun}</ul>`;
+		return `<p>${item.gaishu}</p><ul class="renwu">出场人物： ${item.renwu}</ul>`;
 		}).join("<br>");
+		// <ul class="pinglun">${item.pinglun}</ul>
 	}	
 	
     function initChapterSelect() {
